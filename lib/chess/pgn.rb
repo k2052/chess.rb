@@ -94,22 +94,8 @@ module Chess
       return result.join('')
     end
 
-    # convert a move from Standard Algebraic Notation (SAN) to 0x88 coordinates
-    def move_from_san(move)
-      moves = generate_moves
-
-      moves.each_with_index do |_move, i|
-        # strip off any trailing move decorations: e.g Nf3+?! */
-        if move.gsub(/[+#?!=]+$/,'') == move_to_san(moves[i]).gsub(/[+#?!=]+$/,'')
-          return moves[i]
-        end
-      end
-
-      return nil
-    end
-
     def get_move_obj(move)
-      return move_from_san(move.trim)
+      return Move.from_san(move, board: self)
     end
 
     def parse_pgn_header(header, newline_char: '\r?\n')

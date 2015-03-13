@@ -5,15 +5,15 @@ module Chess
     attr_accessor :type, :color
 
     def initialize(type:, color:)
-      @type, @color = type, color
-      raise StandardError, 'Invalid Piece' unless Board::SYMBOLS[@type]
+      @type, @color = type.to_s.downcase.to_sym, color
+      raise StandardError, 'Invalid Piece' unless Board::SYMBOLS.include? @type.to_s
     end
 
     def symbol
-      if @color == 'w'
-        Board::SYMBOLS[@type].upcase
+      if color == :w
+        @type.to_s.upcase
       else
-        Board::SYMBOLS[@type]
+        @type.to_s.downcase
       end
     end
 

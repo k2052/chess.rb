@@ -10,15 +10,15 @@ module Chess
     include State
     include PGN
 
-    BLACK  = 'b'
-    WHITE  = 'w'
+    BLACK  = :b
+    WHITE  = :w
     EMPTY  = -1
-    PAWN   = 'p'
-    KNIGHT = 'n'
-    BISHOP = 'b'
-    ROOK   = 'r'
-    QUEEN  = 'q'
-    KING   = 'k'
+    PAWN   = :p
+    KNIGHT = :n
+    BISHOP = :b
+    ROOK   = :r
+    QUEEN  = :q
+    KING   = :k
 
     SYMBOLS = 'pnbrqkPNBRQK'
     DEFAULT_POSITION = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1'
@@ -77,13 +77,13 @@ module Chess
     SHIFTS = { p: 0, n: 1, b: 2, r: 3, q: 4, k: 5 }
 
     FLAGS = {
-      NORMAL:       'n',
-      CAPTURE:      'c',
-      BIG_PAWN:     'b',
-      EP_CAPTURE:   'e',
-      PROMOTION:    'p',
-      KSIDE_CASTLE: 'k',
-      QSIDE_CASTLE: 'q'
+      NORMAL:       :n,
+      CAPTURE:      :c,
+      BIG_PAWN:     :b,
+      EP_CAPTURE:   :e,
+      PROMOTION:    :p,
+      KSIDE_CASTLE: :k,
+      QSIDE_CASTLE: :q
     }
 
     BITS = {
@@ -125,12 +125,13 @@ module Chess
 
     attr_accessor :board, :kings, :turn, :castling, :ep_square, :half_moves, :move_number, :history, :header
 
-    def initialize(fen: Board::DEFAULT_POSITION)
+    def initialize(fen = Board::DEFAULT_POSITION)
+      clear
       load_position(fen)
     end
 
     def clear
-      @board       = Array.new(128)
+      @board       = {} # board is keyed by ints so we can run attacks/rays/offsets
       @kings       = {w: Board::EMPTY, b: Board::EMPTY}
       @turn        = Board::WHITE
       @castling    = {w: 0, b: 0}
@@ -142,154 +143,7 @@ module Chess
     end
 
     def squares
-      keys = []
-
-      i = Board::SQUARES[:a8]
-      while i < Board::SQUARES[:h1] do
-        if i & 0x88
-          i += 7
-          next
-        end
-
-        keys.push(algebraic(i))
-
-        i += 1
-      end
-
-      return keys
-    end
-
-    def moves(legal: false, square: nil)
-      generate_moves(legal: legal, square: square)
-    end
-
-    def move(move)
-      # The move function can be called with in the following parameters:
-      move_obj = nil
-      moves    = generate_moves()
-
-      if move.is_a? String
-        # convert the move string to a move object
-        moves.each do |_move|
-          if move == _move.to_san
-            move_obj = _move
-            break
-          end
-        end
-      elsif move.is_a? Move
-        # convert the pretty move object to an ugly move object
-        moves.each do |_move|
-          if (move.from == algebraic(_move.from) &&
-              move.to == algebraic(_move.to) &&
-              !_move.promotion ||
-              move.promotion == _move.promotion)
-            move_obj = _move
-            break
-          end
-        end
-      end
-
-      # failed to find move
-      return nil unless move_obj
-
-      make_move(move_obj)
-
-      move_obj
-    end
-
-    def undo
-      undo_move
-    end
-
-    def load_position(fen)
-      clear
-
-      tokens   = fen.split(' ')
-      position = tokens[0]
-      square   = 0
-      valid    = Board::SYMBOLS + '12345678/'
-
-      return false unless Fen.valid?(fen)
-
-      position.chars.each do |piece|
-        if piece == '/'
-          square += 8
-        elsif piece.is_numeric?
-          square += piece.to_i
-        else
-          color = piece < 'a' ? Board::WHITE : Board::BLACK
-          puts  algebraic(square)
-          put(Piece.new(type: piece.downcase, color: color), algebraic(square))
-          square += 1
-        end
-      end
-
-      turn = tokens[1]
-
-      castling[:w] |= Board::BITS[:KSIDE_CASTLE] if tokens[2].include?('K')
-      castling[:w] |= Board::BITS[:QSIDE_CASTLE] if tokens[2].include?('Q')
-      castling[:b] |= Board::BITS[:KSIDE_CASTLE] if tokens[2].include?('k')
-      castling[:b] |= Board::BITS[:QSIDE_CASTLE] if tokens[2].include?('q')
-
-      ep_square   = tokens[3] == '-' ? Board::EMPTY : Board::SQUARES[tokens[3].to_sym]
-      half_moves  = tokens[4].to_i
-      move_number = tokens[5].to_i
-
-      update_setup(to_fen)
-
-      true
-    end
-
-    def to_fen
-      empty = 0
-      fen   = ''
-
-      Board::SQUARES.each do |key, sqi|
-        empty = 0
-
-        if board[sqi].nil?
-          empty += 1
-        else
-          if empty > 0
-            fen << empty
-            empty = 0
-          end
-
-          piece = board[sqi]
-          fen << piece.symbol
-        end
-
-        if sqi & 0x88
-          fen << empty if empty > 0
-          fen << '/' unless sqi == Board::SQUARES[:h1]
-
-          empty = 0
-        end
-      end
-
-      cflags  = ''
-      cflags << 'K' if castling[Board::WHITE] & Board::BITS[:KSIDE_CASTLE]
-      cflags << 'Q' if castling[Board::WHITE] & Board::BITS[:QSIDE_CASTLE]
-      cflags << 'k' if castling[Board::BLACK] & Board::BITS[:KSIDE_CASTLE]
-      cflags << 'q' if castling[Board::BLACK] & Board::BITS[:QSIDE_CASTLE]
-
-      # do we have an empty castling flag?
-      cflags  = cflags || '-'
-      epflags = (ep_square == Board::EMPTY) ? '-' : algebraic(ep_square)
-
-      [fen, turn, cflags, epflags, half_moves, move_number].join(' ')
-    end
-
-    def update_setup(fen)
-      return if history.length > 0
-
-      if fen != Board::DEFAULT_POSITION
-        header['SetUp'] = '1'
-        header['FEN']   = fen
-      else
-        header.delete('SetUp')
-        header.delete('FEN')
-      end
+      Board::SQUARES.keys
     end
 
     def get(square)
@@ -297,19 +151,19 @@ module Chess
     end
 
     def put(piece, square)
+      square = square.to_sym
+
       # check for piece
       return false unless Board::SYMBOLS.include?(piece.symbol)
 
       # check for valid square
       return false unless Board::SQUARES.include?(square)
 
-      sq = Board::SQUARES[square.to_sym]
+      sq = Board::SQUARES[square]
 
       # don't let the user place more than one king
-      if piece.type == Board::KING
-        if kings[piece.color]
-          return false unless kings[piece.color] == sq
-        end
+      if piece.type == Board::KING and !(kings[piece.color] == Board::EMPTY || kings[piece.color] == sq)
+          return false
       end
 
       board[sq] = piece
@@ -317,9 +171,9 @@ module Chess
         kings[piece.color] = sq
       end
 
-      # update_setup(to_fen)
+      update_setup(to_fen)
 
-      return true
+      true
     end
 
     def remove(square)
@@ -332,20 +186,19 @@ module Chess
 
       update_setup(to_fen)
 
-      return piece
+      piece
     end
 
     def rank(i)
-      return i >> 4
+      i >> 4
     end
 
     def file(i)
-      return i & 15
+      i & 15
     end
 
     def algebraic(i)
-      f, r = file(i), rank(i)
-      return 'abcdefgh'.slice(f, f + 1) + '87654321'.slice(r, r + 1)
+      return 'abcdefgh'[file(i)] + '87654321'[rank(i)]
     end
 
     def swap_color(c)
@@ -353,16 +206,20 @@ module Chess
     end
 
     def square_color(square)
-      if Board::SQUARES.include?square.to_sym
+      if Board::SQUARES.include? square.to_sym
         sq_0x88 = Board::SQUARES[square.to_sym]
         if rank(sq_0x88) + file(sq_0x88) % 2 == 0
-          return 'light'
+          return :light
         else
-          return 'dark'
+          return :dark
         end
       end
 
       return nil
+    end
+
+    def [](k)
+      board[k]
     end
   end
 end
