@@ -1,5 +1,5 @@
 require_relative '../lib/chess'
 
 RSpec.configure do |config|
-  config.pattern = '**{,/*/**}/movegenerator_spec.rb'
+  config.pattern = '**/square_set_spec.rb'
 end
