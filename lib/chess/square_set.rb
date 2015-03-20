@@ -60,6 +60,7 @@ module Chess
       return SquareSet.new((self.mask | other.mask) & Board::BB_ALL) if other.respond_to? :mask
       return SquareSet.new((self.mask | other) & Board::BB_ALL)
     end
+
     def ilshift(shift)
       mask = (self.mask << shift & Board::BB_ALL)
       return self
@@ -78,6 +79,7 @@ module Chess
       end
       return self
     end
+
     def ixor(other)
       if other.respond_to? :mask
         self.mask = (self.mask ^ other.mask) & Board::BB_ALL
@@ -121,15 +123,15 @@ module Chess
       builder = []
 
       Board::SQUARES_180.each do |square|
-        mask = Board::BB_SQUARES[square]
+        _mask = Board::BB_SQUARES[square]
 
-        if self.mask & mask
+        if mask & _mask != 0
           builder.push("1")
         else
-          builder.push(".")
+          builder.push('.')
         end
 
-        if mask & Board::BB_FILE_H
+        if _mask & Board::BB_FILE_H != 0
           if square != Board::H1
             builder.push("\n")
           end

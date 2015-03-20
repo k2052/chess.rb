@@ -20,4 +20,32 @@ describe Chess::SquareSet do
       expect(Chess::Board::BB_ALL).to eq(Chess::SquareSet.new(Chess::Board::BB_ALL))
     end
   end
+
+  describe 'to_s' do
+    it 'returns a representation of squares' do
+      expected = %{
+. . . . . . . 1
+. 1 . . . . . .
+. . . . . . . .
+. . . . . . . .
+. . . . . . . .
+. . . . . . . .
+. . . . . . . .
+1 1 1 1 1 1 1 1}
+
+      bb = Chess::SquareSet.new(Chess::Board::BB_H8 | Chess::Board::BB_B7 | Chess::Board::BB_RANK_1)
+      # expect(bb.to_s).to eq(expected)
+    end
+  end
+
+  describe 'each' do
+    it 'returns an array and yields' do
+      mask = Chess::Board::BB_G7 | Chess::Board::BB_G8
+      puts mask
+      bb = Chess::SquareSet.new(mask)
+      res = []
+      bb.each { |sq| res << sq }
+      expect(res).to eq([Chess::Board::G7, Chess::Board::G8])
+    end
+  end
 end

@@ -1,7 +1,6 @@
 require_relative 'move'
 require_relative 'square_set'
 require_relative 'bitops'
-require_relative 'constants'
 require_relative 'epd'
 require_relative 'fen'
 require_relative 'move_generation'

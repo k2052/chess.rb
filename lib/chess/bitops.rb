@@ -5,13 +5,12 @@ module Chess
     end
 
     def bit_scan(b, n=0)
-      string = b.to_s
-      l = string.length
-      r = string.slice(0, l - n).index("1")
-      if r == -1
+      l = b.to_s.length
+      r = b.to_s.rindex('1', l - n)
+      if r.nil?
         return -1
       else
-        return l - r - 1
+        return l - (r - 1)
       end
     end
 
