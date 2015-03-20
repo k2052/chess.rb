@@ -28,7 +28,7 @@ module Chess
       return enum_for(:each) unless block_given?
 
       square = bit_scan(mask)
-      while square != -1 and square do
+      while square do
         yield square
         square = bit_scan(mask, square + 1)
       end
@@ -62,12 +62,12 @@ module Chess
     end
 
     def ilshift(shift)
-      mask = (self.mask << shift & Board::BB_ALL)
+      @mask = (@mask << shift & Board::BB_ALL)
       return self
     end
 
     def irshift(shift)
-      mask >>= shift
+      self.mask = @mask >> shift
       return self
     end
 

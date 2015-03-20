@@ -10,6 +10,7 @@ require_relative 'zobrist'
 
 module Chess
   class Board
+    extend  BitOps
     include BitOps
     include EPD
     include FEN
@@ -148,105 +149,6 @@ module Chess
     BB_A6, BB_B6, BB_C6, BB_D6, BB_E6, BB_F6, BB_G6, BB_H6,
     BB_A7, BB_B7, BB_C7, BB_D7, BB_E7, BB_F7, BB_G7, BB_H7,
     BB_A8, BB_B8, BB_C8, BB_D8, BB_E8, BB_F8, BB_G8, BB_H8 = *(BB_SQUARES)
-
-    def self.pop_count(b)
-      return b.to_s.count("1")
-    end
-
-    def self.bit_scan(b, n=0)
-      string = b.to_s
-      l = string.length
-      r = string.slice(0, l - n).index("1")
-      if r == -1
-        return -1
-      else
-        return l - r - 1
-      end
-    end
-
-    def self.shift_down(b)
-      b >> 8
-    end
-
-    def self.shift_2_down(b)
-      b >> 16
-    end
-
-    def self.shift_up(b)
-      (b << 8) & BB_ALL
-    end
-
-    def self.shift_2_up(b)
-      (b << 16) & BB_ALL
-    end
-
-    def self.shift_right(b)
-      (b << 1) & ~BB_FILE_A
-    end
-
-    def self.shift_2_right(b)
-      (b << 2) & ~BB_FILE_A & ~BB_FILE_B
-    end
-
-    def self.shift_left(b)
-      (b >> 1) & ~BB_FILE_H
-    end
-
-    def self.shift_2_left(b)
-      (b >> 2) & ~BB_FILE_G & ~BB_FILE_H
-    end
-
-    def self.shift_up_left(b)
-      (b << 7) & ~BB_FILE_H
-    end
-
-    def self.shift_up_right(b)
-      (b << 9) & ~BB_FILE_A
-    end
-
-    def self.shift_down_left(b)
-      (b >> 9) & ~BB_FILE_H
-    end
-
-    def self.shift_down_right(b)
-      (b >> 7) & ~BB_FILE_A
-    end
-
-    def self.l90(b)
-      mask = Board::BB_VOID
-
-      square = bit_scan(b)
-      while square != - 1 and square do
-        mask |= Board::BB_SQUARES_L90[square]
-        square = bit_scan(b, square + 1)
-      end
-
-      return mask
-    end
-
-    def self.r45(b)
-      mask = BB_VOID
-
-      square = bit_scan(b)
-      while square != - 1 and square do
-        mask |= BB_SQUARES_R45[square]
-        square = bit_scan(b, square + 1)
-      end
-
-      return mask
-    end
-
-    def self.l45(b)
-      mask = Board::BB_VOID
-
-      square = bit_scan(b)
-      while square != - 1 and square do
-        mask |= BB_SQUARES_L45[square]
-        square = bit_scan(b, square + 1)
-      end
-
-      return mask
-    end
 
     bb_light_squares = bb_dark_squares = BB_VOID
 

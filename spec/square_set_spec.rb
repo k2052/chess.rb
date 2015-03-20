@@ -38,14 +38,83 @@ describe Chess::SquareSet do
     end
   end
 
-  describe 'each' do
+  describe '#each' do
     it 'returns an array and yields' do
       mask = Chess::Board::BB_G7 | Chess::Board::BB_G8
-      puts mask
       bb = Chess::SquareSet.new(mask)
       res = []
       bb.each { |sq| res << sq }
       expect(res).to eq([Chess::Board::G7, Chess::Board::G8])
+    end
+  end
+
+  describe '#&' do
+    it '&s them' do
+      expect(Chess::SquareSet.new(Chess::Board::BB_RANK_2) & Chess::Board::BB_FILE_D).to eq(Chess::Board::BB_D2)
+    end
+  end
+
+  describe '#^' do
+    it '^s them' do
+      expect(Chess::SquareSet.new(Chess::Board::BB_ALL) ^ Chess::Board::BB_VOID).to eq(Chess::Board::BB_ALL)
+    end
+  end
+
+  describe '#|' do
+    it '|s them' do
+      expect(Chess::SquareSet.new(Chess::Board::BB_C1) | Chess::Board::BB_FILE_C).to eq(Chess::Board::BB_FILE_C)
+    end
+  end
+
+  describe '#ixor' do
+    it 'ixors them' do
+      bb = Chess::SquareSet.new(Chess::Board::BB_VOID)
+      bb.ixor(Chess::Board::BB_ALL)
+      expect(bb).to eq(Chess::Board::BB_ALL)
+    end
+  end
+
+  describe '#and_eq' do
+    it 'and_eqs them' do
+      bb = Chess::SquareSet.new(Chess::Board::BB_ALL)
+      bb.and_eq(Chess::Board::BB_E4)
+      expect(bb).to eq(Chess::Board::BB_E4)
+    end
+  end
+
+  describe '#ior' do
+    it "ior's them" do
+      bb = Chess::SquareSet.new(Chess::Board::BB_E4)
+      bb.ior(Chess::Board::BB_RANK_4)
+      expect(bb).to eq(Chess::Board::BB_RANK_4)
+    end
+  end
+
+  describe '#<<' do
+    it 'left shifts' do
+      expect(Chess::SquareSet.new(Chess::Board::BB_F3) << 1).to eq(Chess::Board::BB_G3)
+    end
+  end
+
+  describe '#>>' do
+    it 'right shifts' do
+      expect(Chess::SquareSet.new(Chess::Board::BB_C8) >> 2).to eq(Chess::Board::BB_A8)
+    end
+  end
+
+  describe '#ilshift' do
+    it 'ilshifts' do
+      bb = Chess::SquareSet.new(Chess::Board::BB_D1)
+      bb.ilshift(1)
+      expect(bb).to eq(Chess::Board::BB_E1)
+    end
+  end
+
+  describe '#irshift' do
+    it 'irshifts' do
+      bb = Chess::SquareSet.new(Chess::Board::BB_E1)
+      bb.irshift(2)
+      expect(bb).to eq(Chess::Board::BB_C1)
     end
   end
 end

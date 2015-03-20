@@ -4,13 +4,15 @@ module Chess
       return b.to_s.count("1")
     end
 
-    def bit_scan(b, n=0)
-      l = b.to_s.length
-      r = b.to_s.rindex('1', l - n)
+    def bit_scan(b, n = 0)
+      string = b.to_s(2)
+      l = string.length
+      string = string.slice(0, l - n)
+      r = string.rindex('1')
       if r.nil?
-        return -1
+        return nil
       else
-        return l - (r - 1)
+        return l - r - 1
       end
     end
 
