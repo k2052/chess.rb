@@ -30,10 +30,10 @@ module Chess
 
     def attacker_mask(color, square)
       attackers = BB_PAWN_ATTACKS[color ^ 1][square] & pawns
-      attackers |= knight_attacks_from(square) & knights
-      attackers |= bishop_attacks_from(square) & (bishops | queens)
-      attackers |= rook_attacks_from(square) & (rooks | queens)
-      attackers |= king_attacks_from(square) & kings
+      attackers.ior(knight_attacks_from(square) & knights)
+      attackers.ior(bishop_attacks_from(square) & (bishops | queens))
+      attackers.ior(rook_attacks_from(square) & (rooks | queens))
+      attackers.ior(king_attacks_from(square) & kings)
       return attackers & occupied_co[color]
     end
 
@@ -268,69 +268,69 @@ module Chess
       errors = STATUS_VALID
 
       if !occupied_co[WHITE] & kings
-        errors |= STATUS_NO_WHITE_KING
+        errors = errors | STATUS_NO_WHITE_KING
       end
 
       if !occupied_co[BLACK] & kings
-        errors |= STATUS_NO_BLACK_KING
+        errors = erorrs | STATUS_NO_BLACK_KING
       end
 
       if pop_count(occupied & kings) > 2
-        errors |= STATUS_TOO_MANY_KINGS
+        errors = errors | STATUS_TOO_MANY_KINGS
       end
 
       if pop_count(occupied_co[WHITE] & pawns) > 8
-        errors |= STATUS_TOO_MANY_WHITE_PAWNS
+        errors = errors | STATUS_TOO_MANY_WHITE_PAWNS
       end
 
       if pop_count(occupied_co[BLACK] & pawns) > 8
-        errors |= STATUS_TOO_MANY_BLACK_PAWNS
+        errors = errors | STATUS_TOO_MANY_BLACK_PAWNS
       end
 
       if pawns & (BB_RANK_1 | BB_RANK_8)
-        errors |= STATUS_PAWNS_ON_BACKRANK
+        errors = errors | STATUS_PAWNS_ON_BACKRANK
       end
 
       if pop_count(occupied_co[WHITE]) > 16
-        errors |= STATUS_TOO_MANY_WHITE_PIECES
+        errors = errors | STATUS_TOO_MANY_WHITE_PIECES
       end
 
       if pop_count(occupied_co[BLACK]) > 16
-        errors |= STATUS_TOO_MANY_BLACK_PIECES
+        errors = errors | STATUS_TOO_MANY_BLACK_PIECES
       end
 
       if castling_rights & CASTLING_WHITE
         if !king_squares[WHITE] == E1
-          errors |= STATUS_BAD_CASTLING_RIGHTS
+          errors = errors | STATUS_BAD_CASTLING_RIGHTS
         end
 
         if castling_rights & CASTLING_WHITE_QUEENSIDE
           if !BB_A1 & occupied_co[WHITE] & rooks
-            errors |= STATUS_BAD_CASTLING_RIGHTS
+            errors = errors | STATUS_BAD_CASTLING_RIGHTS
           end
         end
 
         if castling_rights & CASTLING_WHITE_KINGSIDE
           if !BB_H1 & occupied_co[WHITE] & rooks
-            errors |= STATUS_BAD_CASTLING_RIGHTS
+            errors = errors | STATUS_BAD_CASTLING_RIGHTS
           end
         end
       end
 
       if castling_rights & CASTLING_BLACK
         if !king_squares[BLACK] == E8
-          errors |= STATUS_BAD_CASTLING_RIGHTS
+          errors = errors | STATUS_BAD_CASTLING_RIGHTS
         end
 
         if castling_rights & CASTLING_BLACK_QUEENSIDE
           if !BB_A8 & occupied_co[BLACK] & rooks
-            errors |= STATUS_BAD_CASTLING_RIGHTS
+            errors = errors | STATUS_BAD_CASTLING_RIGHTS
           end
         end
 
         if castling_rights & CASTLING_BLACK_KINGSIDE
           if !BB_H8 & occupied_co[BLACK] & rooks
-            errors |= STATUS_BAD_CASTLING_RIGHTS
+            errors = errors | STATUS_BAD_CASTLING_RIGHTS
           end
         end
       end
@@ -346,19 +346,19 @@ module Chess
 
         # The en-passant square must be on the third or sixth rank.
         if rank_index(ep_square) != ep_rank
-          errors |= STATUS_INVALID_EP_SQUARE
+          errors = errors | STATUS_INVALID_EP_SQUARE
         end
 
         # The last move must have been a double pawn push, so there must
         # be a pawn of the correct color on the fourth or fifth rank.
         if !pawns & occupied_co[turn ^ 1] & pawn_mask
-          errors |= STATUS_INVALID_EP_SQUARE
+          errors = errors | STATUS_INVALID_EP_SQUARE
         end
       end
 
       if !errors & (STATUS_NO_WHITE_KING | STATUS_NO_BLACK_KING | STATUS_TOO_MANY_KINGS)
         if was_into_check()
-          errors |= STATUS_OPPOSITE_CHECK
+          errors = errors | STATUS_OPPOSITE_CHECK
         end
       end
 

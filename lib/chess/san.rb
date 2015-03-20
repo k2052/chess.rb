@@ -27,7 +27,7 @@ module Chess
         if kings & occupied_co[turn] & BB_SQUARES[move.from_square] and is_legal(move)
           return move
         else
-          raise ValueError, "illegal san: #{repr(san)}"
+          raise ArgumentError, "illegal san: #{repr(san)}"
         end
       elsif ["O-O-O", "O-O-O+", "O-O-O#"].include? san
         if turn == WHITE
@@ -38,14 +38,14 @@ module Chess
         if kings & occupied_co[turn] & BB_SQUARES[move.from_square] and is_legal(move)
           return move
         else
-          raise ValueError, "illegal san: #{repr(san)}"
+          raise ArgumentError, "illegal san: #{repr(san)}"
         end
       end
 
       # Match normal moves.
       match = SAN_REGEX.match(san)
       unless match
-        raise ValueError, "invalid san: #{repr(san)}"
+        raise ArgumentError, "invalid san: #{repr(san)}"
       end
 
       # Get target square.
@@ -111,14 +111,14 @@ module Chess
         end
 
         if matched_move
-          raise ValueError, "ambiguous san: #{repr(san)}"
+          raise ArgumentError, "ambiguous san: #{repr(san)}"
         end
 
         matched_move = move
       end
 
       if !matched_move
-        raise ValueError, "illegal san: #{repr(san)}"
+        raise ArgumentError, "illegal san: #{repr(san)}"
       end
 
       return matched_move

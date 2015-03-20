@@ -19,7 +19,7 @@ module Chess
         promotion = Board::PIECE_SYMBOLS.index(uci[4].to_sym)
         return new(Board::SQUARE_NAMES.index(uci[0,2].to_sym), Board::SQUARE_NAMES.index(uci[2,2].to_sym), promotion)
       else
-        raise ValueError, "expected uci string to be of length 4 or 5"
+        raise ArgumentError, "expected uci string to be of length 4 or 5"
       end
     end
 

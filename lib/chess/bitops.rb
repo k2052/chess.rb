@@ -68,7 +68,7 @@ module Chess
       mask = Board::BB_VOID
 
       square = bit_scan(b)
-      while square != - 1 and square do
+      while square do
         mask |= Board::BB_SQUARES_L90[square]
         square = bit_scan(b, square + 1)
       end
@@ -80,7 +80,7 @@ module Chess
       mask = Board::BB_VOID
 
       square = bit_scan(b)
-      while square != - 1 and square do
+      while square do
         mask |= Board::BB_SQUARES_R45[square]
         square = bit_scan(b, square + 1)
       end
@@ -92,7 +92,7 @@ module Chess
       mask = Board::BB_VOID
 
       square = bit_scan(b)
-      while square != - 1 and square do
+      while square do
         mask |= Board::BB_SQUARES_L45[square]
         square = bit_scan(b, square + 1)
       end

@@ -16,7 +16,7 @@ module Chess
       # Split into 4 or 5 parts.
       parts = epd.strip.chomp(";").split(nil, 4)
       if parts.length < 4
-        raise ValueError, "epd should consist of at least 4 parts: #{repr(epd)}"
+        raise ArgumentError, "epd should consist of at least 4 parts: #{repr(epd)}"
       end
 
       operations = {}
@@ -26,8 +26,8 @@ module Chess
         operation_part  = parts.pop()
         operation_part += ";"
 
-        opcode     = ""
-        operand    = ""
+        opcode     = ''
+        operand    = ''
         in_operand = false
         in_quotes  = false
         escape     = false
@@ -36,10 +36,10 @@ module Chess
 
         operation_part.each do |c|
           if !in_operand
-            if c == ";"
+            if c == ';'
               operations[opcode] = nil
-              opcode = ""
-            elsif c == " "
+              opcode = ''
+            elsif c == ' '
               if opcode
                 in_operand = true
               end
@@ -47,40 +47,40 @@ module Chess
               opcode += c
             end
           else
-            if c == "\""
+            if c == '"'
               if !operand and !in_quotes
                 in_quotes = true
               elsif escape
                 operand += c
               end
-            elsif c == "\\"
+            elsif c == '\\'
               if escape
                 operand += c
               else
                 escape = true
               end
-            elsif c == "s"
+            elsif c == 's'
               if escape
-                operand += ";"
+                operand += ';'
               else
                 operand += c
               end
-            elsif c == ";"
+            elsif c == ';'
               if escape
-                operand += "\\"
+                operand += '\\'
               end
 
               if in_quotes
                 operations[opcode] = operand
               else
                 begin
-                    operations[opcode] = Integer operand
+                    operations[opcode] = Integer(operand)
                 rescue
                     begin
-                      operations[opcode] = Float operand
+                      operations[opcode] = Float(operand)
                     rescue
                       unless position
-                        position = Board.new(parts + ["0", "1"].join(' '))
+                        position = Board.new(parts + ['0', '1'].join(' '))
                       end
 
                       operations[opcode] = position.parse_san(operand)
@@ -164,61 +164,61 @@ module Chess
 
       # Side to move.
       if turn == WHITE
-        epd.push("w")
+        epd.push('w')
       else
-        epd.push("b")
+        epd.push('b')
       end
 
-      epd.push(" ")
+      epd.push(' ')
 
       # Castling rights.
       if !castling_rights
-        epd.push("-")
+        epd.push('-')
       else
         if castling_rights & CASTLING_WHITE_KINGSIDE
-          epd.push("K")
+          epd.push('K')
         end
         if castling_rights & CASTLING_WHITE_QUEENSIDE
-          epd.push("Q")
+          epd.push('Q')
         end
         if castling_rights & CASTLING_BLACK_KINGSIDE
-          epd.push("k")
+          epd.push('k')
         end
         if castling_rights & CASTLING_BLACK_QUEENSIDE
-          epd.push("q")
+          epd.push('q')
         end
       end
 
-      epd.push(" ")
+      epd.push(' ')
 
       # En-passant square.
       if ep_square
         epd.push(SQUARE_NAMES[ep_square])
       else
-        epd.push("-")
+        epd.push('-')
       end
 
       # Append operations.
       operations.items.each do |opcode, operand|
-        epd.push(" ")
+        epd.push(' ')
         epd.push(opcode)
 
-        if operand.include?("from_square") && operand.include?("to_square")
+        if operand.include?('from_square') && operand.include?('to_square')
           # Append SAN for moves.
-          epd.push(" ")
+          epd.push(' ')
           epd.push(san(operand))
         elsif operand.is_numeric?
           # Append integer or float.
-          epd.push(" ")
+          epd.push(' ')
           epd.push(operand.to_s)
         elsif operand != nil
           # Append as escaped string.
-          epd.push(" \"")
+          epd.push('"')
           epd.push(operand.to_s.gsub("\r", "").gsub("\n", " ").gsub("\\", "\\\\").gsub(";", "\\s"))
-          epd.push("\"")
+          epd.push('"')
         end
 
-        epd.push(";")
+        epd.push(';')
       end
 
       return epd.join('')

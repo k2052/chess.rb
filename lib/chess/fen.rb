@@ -8,15 +8,15 @@ module Chess
       ###
 
       # Ensure there are six parts.
-      parts = fen.split()
+      parts = fen.split
       if parts.length != 6
-        raise ValueError, "fen string should consist of 6 parts: #{repr(fen)}"
+        raise ArgumentError, "fen string should consist of 6 parts: #{repr(fen)}"
       end
 
       # Ensure the board part is valid.
       rows = parts[0].split("/")
       if rows.length != 8
-        raise ValueError, "expected 8 rows in position part of fen: #{repr(fen)}"
+        raise ArgumentError, "expected 8 rows in position part of fen: #{repr(fen)}"
       end
 
       # Validate each row.
@@ -27,7 +27,7 @@ module Chess
         row.each do |c|
           if ["1", "2", "3", "4", "5", "6", "7", "8"].include? c
             if previous_was_digit
-              raise ValueError, "two subsequent digits in position part of fen: #{repr(fen)}"
+              raise ArgumentError, "two subsequent digits in position part of fen: #{repr(fen)}"
             end
             field_sum         += c.to_i
             previous_was_digit = true
@@ -35,33 +35,33 @@ module Chess
             field_sum += 1
             previous_was_digit = false
           else
-            raise ValueError, "invalid character in position part of fen: #{repr(fen)}"
+            raise ArgumentError, "invalid character in position part of fen: #{repr(fen)}"
           end
         end
 
         if field_sum != 8
-          raise ValueError, "expected 8 columns per row in position part of fen: #{repr(fen)}"
+          raise ArgumentError, "expected 8 columns per row in position part of fen: #{repr(fen)}"
         end
       end
 
       # Check that the turn part is valid.
       unless ["w", "b"].include? parts[1]
-        raise ValueError, "expected 'w' or 'b' for turn part of fen: #{repr(fen)}"
+        raise ArgumentError, "expected 'w' or 'b' for turn part of fen: #{repr(fen)}"
       end
 
       # Check that the castling part is valid.
       unless FEN_CASTLING_REGEX.match(parts[2])
-        raise ValueError, "invalid castling part in fen: #{repr(fen)}"
+        raise ArgumentError, "invalid castling part in fen: #{repr(fen)}"
       end
 
       # Check that the en-passant part is valid.
       if parts[3] != "-"
         if parts[1] == "w"
           if rank_index(SQUARE_NAMES.index(parts[3])) != 5
-            raise ValueError, "expected en-passant square to be on sixth rank: #{repr(fen)}"
+            raise ArgumentError, "expected en-passant square to be on sixth rank: #{repr(fen)}"
           else
             if rank_index(SQUARE_NAMES.index(parts[3])) != 2
-              raise ValueError, "expected en-passant square to be on third rank: #{repr(fen)}"
+              raise ArgumentError, "expected en-passant square to be on third rank: #{repr(fen)}"
             end
           end
         end
@@ -69,13 +69,13 @@ module Chess
 
       # Check that the half move part is valid.
       if parts[4].to_i < 0
-        raise ValueError, "halfmove clock can not be negative: #{repr(fen)}"
+        raise ArgumentError, "halfmove clock can not be negative: #{repr(fen)}"
       end
 
       # Check that the fullmove number part is valid.
       # 0 is allowed for compability but later replaced with 1.
       if parts[5].to_i < 0
-        raise ValueError, "fullmove number must be positive: #{repr(fen)}"
+        raise ArgumentError, "fullmove number must be positive: #{repr(fen)}"
       end
 
       # Clear board.

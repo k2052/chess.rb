@@ -554,27 +554,27 @@ module Chess
       mask = BB_SQUARES[square]
 
       if piece_type == PAWN
-        pawns ^= mask
+        pawns = pawns ^ mask
       elsif piece_type == KNIGHT
-        knights ^= mask
+        knights = knights ^ mask
       elsif piece_type == BISHOP
-        bishops ^= mask
+        bishops = bishops ^ mask
       elsif piece_type == ROOK
-        rooks ^= mask
+        rooks = rooks ^ mask
       elsif piece_type == QUEEN
-        queens ^= mask
+        queens = queens ^ mask
       else
-        kings ^= mask
+        kings = kings ^ mask
       end
 
       color = (occupied_co[BLACK] & mask).to_i
 
-      pieces[square]      = nil
-      occupied           ^= mask
-      occupied_co[color] ^= mask
-      occupied_l90       ^= BB_SQUARES[SQUARES_L90[square]]
-      occupied_r45       ^= BB_SQUARES[SQUARES_R45[square]]
-      occupied_l45       ^= BB_SQUARES[SQUARES_L45[square]]
+      pieces[square]     = nil
+      occupied           = occupied ^ mask
+      occupied_co[color] = occupied_co[color] ^ mask
+      occupied_l90       = occupied_l90 ^ BB_SQUARES[SQUARES_L90[square]]
+      occupied_r45       = occupied_r45 ^ BB_SQUARES[SQUARES_R45[square]]
+      occupied_l45       = occupied_l45 ^ BB_SQUARES[SQUARES_L45[square]]
 
       # Update incremental zobrist hash.
       if color == BLACK
@@ -583,7 +583,7 @@ module Chess
         piece_index = (piece_type - 1) * 2 + 1
       end
 
-      incremental_zobrist_hash ^= POLYGLOT_RANDOM_ARRAY[64 * piece_index + 8 * rank_index(square) + file_index(square)]
+      incremental_zobrist_hash = incremental_zobrist_hash ^ POLYGLOT_RANDOM_ARRAY[64 * piece_index + 8 * rank_index(square) + file_index(square)]
     end
 
     # Sets a piece at the given square. An existing piece is replaced
@@ -595,25 +595,25 @@ module Chess
       mask = BB_SQUARES[square]
 
       if piece.piece_type == PAWN
-        pawns |= mask
+        pawns = pawsn | mask
       elsif piece.piece_type == KNIGHT
-        knights |= mask
+        knights = knights | mask
       elsif piece.piece_type == BISHOP
-        bishops |= mask
+        bishops = bishops | mask
       elsif piece.piece_type == ROOK
-        rooks |= mask
+        rooks = rooks | mask
       elsif piece.piece_type == QUEEN
-        queens |= mask
+        queens = queens | mask
       elsif piece.piece_type == KING
-        kings |= mask
+        kings = kings | mask
         king_squares[piece.color] = square
       end
 
-      occupied                 ^= mask
-      occupied_co[piece.color] ^= mask
-      occupied_l90             ^= BB_SQUARES[SQUARES_L90[square]]
-      occupied_r45             ^= BB_SQUARES[SQUARES_R45[square]]
-      occupied_l45             ^= BB_SQUARES[SQUARES_L45[square]]
+      occupied                 = occupied ^ mask
+      occupied_co[piece.color] = occupied_co[piece.color] ^ mask
+      occupied_l90             = occupied_l90 ^ BB_SQUARES[SQUARES_L90[square]]
+      occupied_r45             = occupied_r45 ^ BB_SQUARES[SQUARES_R45[square]]
+      occupied_l45             = occupied_l45 ^ BB_SQUARES[SQUARES_L45[square]]
 
       # Update incremental zorbist hash.
       if piece.color == BLACK
@@ -622,7 +622,7 @@ module Chess
         piece_index = (piece.piece_type - 1) * 2 + 1
       end
 
-      incremental_zobrist_hash ^= POLYGLOT_RANDOM_ARRAY[64 * piece_index + 8 * rank_index(square) + file_index(square)]
+      incremental_zobrist_hash = incremental_zobrist_hash ^ POLYGLOT_RANDOM_ARRAY[64 * piece_index + 8 * rank_index(square) + file_index(square)]
     end
 
     def is_legal(move)
@@ -706,17 +706,17 @@ module Chess
 
       # Castling rights.
       if move.from_square == E1
-        castling_rights &= ~CASTLING_WHITE
+        castling_rights = castling_rights & ~CASTLING_WHITE
       elsif move.from_square == E8
-        castling_rights &= ~CASTLING_BLACK
+        castling_rights = castling_rights & ~CASTLING_BLACK
       elsif move.from_square == A1 or move.to_square == A1
-        castling_rights &= ~CASTLING_WHITE_QUEENSIDE
+        castling_rights = castling_rights & ~CASTLING_WHITE_QUEENSIDE
       elsif move.from_square == A8 or move.to_square == A8
-        castling_rights &= ~CASTLING_BLACK_QUEENSIDE
+        castling_rights = castling_rights & ~CASTLING_BLACK_QUEENSIDE
       elsif move.from_square == H1 or move.to_square == H1
-        castling_rights &= ~CASTLING_WHITE_KINGSIDE
+        castling_rights = castling_rights & ~CASTLING_WHITE_KINGSIDE
       elsif move.from_square == H8 or move.to_square == H8
-        castling_rights &= ~CASTLING_BLACK_KINGSIDE
+        castling_rights = castling_rights & ~CASTLING_BLACK_KINGSIDE
       end
 
       # Castling.

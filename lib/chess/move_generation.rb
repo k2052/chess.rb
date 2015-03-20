@@ -2,7 +2,7 @@ module Chess
   module MoveGeneration
     def generate_legal_moves(*args)
       moves = generate_pseudo_legal_moves(args)
-      moves.select { |mov| is_into_check(move) }
+      moves.select { |move| is_into_check(move) }
     end
 
     def is_pseudo_legal(move)
@@ -137,7 +137,7 @@ module Chess
         moves = BB_PAWN_ATTACKS[BLACK][ep_square] & movers
 
         from_square = bit_scan(moves)
-        while from_square != -1 and from_square != nil do
+        while from_square do
           moves << Move.new(from_square, ep_square)
           from_square = bit_scan(moves, from_square + 1)
         end
