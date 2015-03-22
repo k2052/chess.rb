@@ -14,7 +14,7 @@ module Chess
       end
 
       # Ensure the board part is valid.
-      rows = parts[0].split("/")
+      rows = parts[0].split('/')
       if rows.length != 8
         raise ArgumentError, "expected 8 rows in position part of fen: #{repr(fen)}"
       end
@@ -24,14 +24,14 @@ module Chess
         field_sum          = 0
         previous_was_digit = false
 
-        row.each do |c|
-          if ["1", "2", "3", "4", "5", "6", "7", "8"].include? c
+        row.chars.each do |c|
+          if ['1', '2', '3', '4', '5', '6', '7', '8'].include? c
             if previous_was_digit
               raise ArgumentError, "two subsequent digits in position part of fen: #{repr(fen)}"
             end
             field_sum         += c.to_i
             previous_was_digit = true
-          elsif ["p", "n", "b", "r", "q", "k"].include? c.downcase
+          elsif ['p', 'n', 'b', 'r', 'q', 'k'].include? c.downcase
             field_sum += 1
             previous_was_digit = false
           else
@@ -45,22 +45,22 @@ module Chess
       end
 
       # Check that the turn part is valid.
-      unless ["w", "b"].include? parts[1]
+      unless ['w', 'b'].include? parts[1]
         raise ArgumentError, "expected 'w' or 'b' for turn part of fen: #{repr(fen)}"
       end
 
       # Check that the castling part is valid.
-      unless FEN_CASTLING_REGEX.match(parts[2])
+      unless Board::FEN_CASTLING_REGEX.match(parts[2])
         raise ArgumentError, "invalid castling part in fen: #{repr(fen)}"
       end
 
       # Check that the en-passant part is valid.
-      if parts[3] != "-"
-        if parts[1] == "w"
-          if rank_index(SQUARE_NAMES.index(parts[3])) != 5
+      if parts[3] != '-'
+        if parts[1] == 'w'
+          if rank_index(Board::SQUARE_NAMES.index(parts[3])) != 5
             raise ArgumentError, "expected en-passant square to be on sixth rank: #{repr(fen)}"
           else
-            if rank_index(SQUARE_NAMES.index(parts[3])) != 2
+            if rank_index(Board::SQUARE_NAMES.index(parts[3])) != 2
               raise ArgumentError, "expected en-passant square to be on third rank: #{repr(fen)}"
             end
           end
@@ -79,49 +79,49 @@ module Chess
       end
 
       # Clear board.
-      clear()
+      clear
 
       # Put pieces on the board.
       square_index = 0
-      parts[0].each do |c|
-        if ["1", "2", "3", "4", "5", "6", "7", "8"].include? c
+      parts[0].chars.each do |c|
+        if ['1', '2', '3', '4', '5', '6', '7', '8'].include? c
           square_index += c.to_i
-        elsif ["p", "n", "b", "r", "q", "k"].include? c.downcase
-          set_piece_at(SQUARES_180[square_index], Piece.from_symbol(c))
+        elsif ['p', 'n', 'b', 'r', 'q', 'k'].include? c.downcase
+          put(Board::SQUARES_180[square_index], Piece.from_symbol(c))
           square_index += 1
         end
       end
 
       # Set the turn.
-      if parts[1] == "w"
-        turn = WHITE
+      if parts[1] == 'w'
+        @turn = Board::WHITE
       else
-        turn = BLACK
+        @turn = Board::BLACK
       end
 
       # Set castling flags.
-      castling_rights = CASTLING_nil
-      if parts[2].include? "K"
-        castling_rights |= CASTLING_WHITE_KINGSIDE
+      castling_rights = Board::CASTLING_NIL
+      if parts[2].include? 'K'
+        castling_rights |= Board::CASTLING_WHITE_KINGSIDE
       end
 
-      if parts[2].include? "Q"
-        castling_rights |= CASTLING_WHITE_QUEENSIDE
+      if parts[2].include? 'Q'
+        castling_rights |= Board::CASTLING_WHITE_QUEENSIDE
       end
 
-      if parts[2].include? "k"
-        castling_rights |= CASTLING_BLACK_KINGSIDE
+      if parts[2].include? 'k'
+        castling_rights |= Board::CASTLING_BLACK_KINGSIDE
       end
 
       if parts[2].include? 'q'
-        castling_rights |= CASTLING_BLACK_QUEENSIDE
+        castling_rights |= Board::CASTLING_BLACK_QUEENSIDE
       end
 
       # Set the en-passant square.
-      if parts[3] == "-"
+      if parts[3] == '-'
         ep_square = 0
       else
-        ep_square = SQUARE_NAMES.index(parts[3])
+        ep_square = Board::SQUARE_NAMES.index(parts[3])
       end
 
       # Set the mover counters.
@@ -141,15 +141,15 @@ module Chess
       fen = []
 
       # Position, turn, castling and en passant.
-      fen.append(epd())
+      fen << epd
 
       # Half moves.
-      fen.append(" ")
-      fen.append(halfmove_clock)
+      fen << ' '
+      fen << halfmove_clock
 
       # Ply.
-      fen.append(" ")
-      fen.append(fullmove_number)
+      fen << ' '
+      fen << fullmove_number
 
       return fen.join ''
     end

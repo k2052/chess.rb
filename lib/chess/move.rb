@@ -11,7 +11,7 @@ module Chess
       #
       # Raises `ValueError` if the UCI string is invalid.
       ###
-      if uci == "0000"
+      if uci == '0000'
         return null
       elsif uci.length == 4
         return new(Board::SQUARE_NAMES.index(uci[0,2].to_sym), Board::SQUARE_NAMES.index(uci[2,4].to_sym))

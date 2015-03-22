@@ -6,8 +6,9 @@ module Chess
 
     def bit_scan(b, n = 0)
       string = b.to_s(2)
-      l = string.length
+      l      = string.length
       string = string.slice(0, l - n)
+
       r = string.rindex('1')
       if r.nil?
         return nil
@@ -69,7 +70,7 @@ module Chess
 
       square = bit_scan(b)
       while square do
-        mask |= Board::BB_SQUARES_L90[square]
+        mask  |= Board::BB_SQUARES_L90[square]
         square = bit_scan(b, square + 1)
       end
 
@@ -81,7 +82,7 @@ module Chess
 
       square = bit_scan(b)
       while square do
-        mask |= Board::BB_SQUARES_R45[square]
+        mask  |= Board::BB_SQUARES_R45[square]
         square = bit_scan(b, square + 1)
       end
 
@@ -93,7 +94,7 @@ module Chess
 
       square = bit_scan(b)
       while square do
-        mask |= Board::BB_SQUARES_L45[square]
+        mask  |= Board::BB_SQUARES_L45[square]
         square = bit_scan(b, square + 1)
       end
 

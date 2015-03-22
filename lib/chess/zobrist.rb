@@ -219,65 +219,65 @@ module Chess
       array ||= POLYGLOT_RANDOM_ARRAY
 
       # Hash in the castling flags.
-      if castling_rights & CASTLING_WHITE_KINGSIDE
-        zobrist_hash ^= array[768]
+      if castling_rights & Board::CASTLING_WHITE_KINGSIDE != 0
+        zobrist_hash = zobrist_hash ^ array[768]
       end
 
-      if castling_rights & CASTLING_WHITE_QUEENSIDE
-        zobrist_hash ^= array[768 + 1]
+      if castling_rights & Board::CASTLING_WHITE_QUEENSIDE != 0
+        zobrist_hash = zobrist_hash ^ array[768 + 1]
       end
 
-      if castling_rights & CASTLING_BLACK_KINGSIDE
-        zobrist_hash ^= array[768 + 2]
+      if castling_rights & Board::CASTLING_BLACK_KINGSIDE != 0
+        zobrist_hash = zobrist_hash ^ array[768 + 2]
       end
 
-      if castling_rights & CASTLING_BLACK_QUEENSIDE
-        zobrist_hash ^= array[768 + 3]
+      if castling_rights & Board::CASTLING_BLACK_QUEENSIDE != 0
+        zobrist_hash = zobrist_hash ^ array[768 + 3]
       end
 
       # Hash in the en-passant file.
       if ep_square
         # But only if theres actually a pawn ready to capture it. Legality
         # of the potential capture is irrelevant.
-        if turn == WHITE
-          ep_mask = shift_down(BB_SQUARES[ep_square])
+        if turn == Board::WHITE
+          ep_mask = shift_down(Board::BB_SQUARES[ep_square])
         else
-          ep_mask = shift_up(BB_SQUARES[ep_square])
+          ep_mask = shift_up(Board::BB_SQUARES[ep_square])
         end
 
         ep_mask = shift_left(ep_mask) | shift_right(ep_mask)
 
-        if ep_mask & pawns & occupied_co[turn]
-          zobrist_hash ^= array[772 + file_index(ep_square)]
+        if ep_mask & pawns & occupied_co[turn] != 0
+          zobrist_hash = zobrist_hash ^ array[772 + file_index(ep_square)]
         end
       end
 
       # Hash in the turn.
-      if turn == WHITE
-        zobrist_hash ^= array[780]
+      if turn == Board::WHITE
+        zobrist_hash = zobrist_hash ^ array[780]
       end
 
       return zobrist_hash
     end
 
-    def board_zobrist_hash(array=nil)
+    def board_zobrist_hash(array = POLYGLOT_RANDOM_ARRAY)
       return incremental_zobrist_hash unless array
 
       zobrist_hash = 0
 
-      squares = occupied_co[BLACK]
+      squares = occupied_co[Board::BLACK]
       square  = bit_scan(squares)
-      while square != -1 and square do
+      while square do
         piece_index = (piece_type_at(square) - 1) * 2
-        zobrist_hash ^= array[64 * piece_index + 8 * rank_index(square) + file_index(square)]
+        zobrist_hash = zobrist_hash ^ array[64 * piece_index + 8 * rank_index(square) + file_index(square)]
         square = bit_scan(squares, square + 1)
       end
 
-      squares = occupied_co[WHITE]
+      squares = occupied_co[Board::WHITE]
       square  = bit_scan(squares)
-      while square != -1 and square do
+      while square do
         piece_index = (piece_type_at(square) - 1) * 2 + 1
-        zobrist_hash ^= array[64 * piece_index + 8 * rank_index(square) + file_index(square)]
+        zobrist_hash = zobrist_hash ^ array[64 * piece_index + 8 * rank_index(square) + file_index(square)]
         square = bit_scan(squares, square + 1)
       end
 

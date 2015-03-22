@@ -5,23 +5,23 @@ module Chess
       # Checks if the given side attacks the given square. Pinned pieces still
       # count as attackers.
       ###
-      if BB_PAWN_ATTACKS[color ^ 1][square] & (pawns | bishops) & occupied_co[color]
+      if Board::BB_PAWN_ATTACKS[color ^ 1][square] & (pawns | bishops) & occupied_co[color] != 0
         return true
       end
 
-      if knight_attacks_from(square) & knights & occupied_co[color]
+      if knight_attacks_from(square) & knights & occupied_co[color] != 0
         return true
       end
 
-      if bishop_attacks_from(square) & (bishops | queens) & occupied_co[color]
+      if bishop_attacks_from(square) & (bishops | queens) & occupied_co[color] !=  0
         return true
       end
 
-      if rook_attacks_from(square) & (rooks | queens) & occupied_co[color]
+      if rook_attacks_from(square) & (rooks | queens) & occupied_co[color] != 0
         return true
       end
 
-      if king_attacks_from(square) & (kings | queens) & occupied_co[color]
+      if king_attacks_from(square) & (kings | queens) & occupied_co[color] != 0
         return true
       end
 
@@ -46,47 +46,42 @@ module Chess
       return SquareSet.new(attacker_mask(color, square))
     end
 
-    def is_check
+    def check?
       # Checks if the current side to move is in check
-      is_attacked_by(turn ^ 1, king_squares[turn])
+      attacked_by?(turn ^ 1, king_squares[turn])
     end
 
-    def is_into_check(move)
+    def into_check?(move)
       ###
       # Checks if the given move would move would leave the king in check or
       # put it into check.
       ###
-      push(move)
-      is_check = was_into_check()
-      pop()
-      return is_check
+      move(move)
+      check = was_into_check?
+      undo
+      return check
     end
 
-    def was_into_check
+    def was_into_check?
       ###
       # Checks if the king of the other side is attacked. Such a position is not
       # valid and could only be reached by an illegal move.
       ###
-      return is_attacked_by(turn, king_squares[turn ^ 1])
+      return attacked_by?(turn, king_squares[turn ^ 1])
     end
 
-    def is_game_over
-      ###
-      # Checks if the game is over due to checkmate, stalemate, insufficient
-      # mating material, the seventyfive-move rule or fivefold repitition.
-      ###
+    ###
+    # Checks if the game is over due to checkmate, stalemate, insufficient
+    # mating material, the seventyfive-move rule or fivefold repitition.
+    ###
+    def game_over?
       # Seventyfive-move rule.
       if halfmove_clock >= 150
         return true
       end
 
       # Insufficient material.
-      if is_insufficient_material()
-        return true
-      end
-
-      # Insufficient material.
-      if is_insufficient_material
+      if insufficient_material?
         return true
       end
 
@@ -94,16 +89,16 @@ module Chess
       return true if generate_legal_moves.empty?
 
       # Fivefold repitition.
-      if is_fivefold_repitition()
+      if fivefold_repitition?
         return true
       end
 
       return false
     end
 
-    def is_checkmate
+    def checkmate?
       # Checks if the current position is a checkmate
-      unless is_check
+      unless check?
         return false
       end
 
@@ -115,9 +110,9 @@ module Chess
       end
     end
 
-    def is_stalemate
+    def stalemate?
       # Checks if the current position is a stalemate
-      if is_check
+      if check?
         return false
       end
 
@@ -128,10 +123,10 @@ module Chess
       end
     end
 
-    def is_insufficient_material
+    def insufficient_material?
       # Checks for a draw due to insufficient mating material
       # Enough material to mate.
-      if pawns or rooks or queens
+      if pawns != 0 or rooks != 0 or queens != 0
         return false
       end
 
@@ -141,14 +136,14 @@ module Chess
       end
 
       # More than a single knight.
-      if knights
+      if knights != 0
         return false
       end
 
       # All bishops on the same color.
-      if bishops & BB_DARK_SQUARES == 0
+      if bishops & Board::BB_DARK_SQUARES == 0
         return true
-      elsif bishops & BB_LIGHT_SQUARES == 0
+      elsif bishops & Board::BB_LIGHT_SQUARES == 0
         return true
       else
         return false
@@ -170,53 +165,55 @@ module Chess
       return false
     end
 
-    def is_fivefold_repitition
+    def fivefold_repitition?
       ###
       # Since the first of July 2014 a game is automatically drawn (without
       # a claim by one of the players) if a position occurs for the fifth time
       # on consecutive alternating moves.
       ###
-      zobrist_hash = zobrist_hash()
+      _zobrist_hash = zobrist_hash()
 
       # A minimum amount of moves must have been played and the position
       # in question must have appeared at least five times.
-      if move_stack.length < 16 or transpositions[zobrist_hash] < 5
+      return false unless transpositions[zobrist_hash]
+      if transpositions[zobrist_hash] < 5
         return false
       end
 
-      switchyard = Hamster.deque
+      switchyard = []
 
       4.times do
         # Go back two full moves, each.
         4.times do
-          switchyard.append(pop())
+          switchyard.push(undo)
         end
 
         # Check the position was the same before.
-        if zobrist_hash() != zobrist_hash
-          while switchyard do
-            push(switchyard.pop())
+        if self.zobrist_hash() != zobrist_hash
+          while !switchyard.empty? do
+            move(switchyard.pop)
           end
+
           return false
         end
       end
 
-      while switchyard do
-        push(switchyard.pop())
+      while !switchyard.empty? do
+        move(switchyard.pop)
       end
 
       return true
     end
 
-    def can_claim_draw
+    def can_claim_draw?
       ###
       # Checks if the side to move can claim a draw by the fifty-move rule or
       # by threefold repitition.
       ###
-      return can_claim_fifty_moves() || can_claim_threefold_repitition()
+      return can_claim_fifty_moves? || can_claim_threefold_repitition?
     end
 
-    def can_claim_fifty_moves
+    def can_claim_fifty_moves?
       ###
       # Draw by the fifty-move rule can be claimed once the clock of halfmoves
       # since the last capture or pawn move becomes equal or greater to 100
@@ -232,133 +229,133 @@ module Chess
       return false
     end
 
-    def can_claim_threefold_repitition
-      ###
-      # Draw by threefold repitition can be claimed if the position on the
-      # board occured for the third time or if such a repitition is reached
-      # with one of the possible legal moves.
-      ###
+    ###
+    # Draw by threefold repitition can be claimed if the position on the
+    # board occured for the third time or if such a repitition is reached
+    # with one of the possible legal moves.
+    ###
+    def can_claim_threefold_repitition?
       # Threefold repitition occured.
       if transpositions[zobrist_hash()] >= 3
         return true
       end
 
       # The next legal move is a threefold repitition.
-      generate_pseudo_legal_moves.each do |move|
-        push(move)
+      generate_pseudo_legal_moves.each_with_index do |move, i|
+        self.move(move)
 
-        if !was_into_check() && transpositions[zobrist_hash()] >= 3
-          pop()
+        transpositions[zobrist_hash()] ||= 1
+        if !was_into_check? && @transpositions[zobrist_hash()] >= 3
+          undo
           return true
         end
 
-        pop()
+        undo
       end
 
       return false
     end
 
-
+    ###
+    # Gets a bitmask of possible problems with the position.
+    # Move making, generation and validation are only guaranteed to work on
+    # a completely valid board.
+    ###
     def status
-      ###
-      # Gets a bitmask of possible problems with the position.
-      # Move making, generation and validation are only guaranteed to work on
-      # a completely valid board.
-      ###
-      errors = STATUS_VALID
+      errors = Board::STATUS_VALID
 
-      if !occupied_co[WHITE] & kings
-        errors = errors | STATUS_NO_WHITE_KING
+      if !occupied_co[Board::WHITE] & kings != 0
+        errors = errors | Board::STATUS_NO_WHITE_KING
       end
 
-      if !occupied_co[BLACK] & kings
-        errors = erorrs | STATUS_NO_BLACK_KING
+      if !occupied_co[Board::BLACK] & kings != 0
+        errors = erorrs | Board::STATUS_NO_BLACK_KING
       end
 
       if pop_count(occupied & kings) > 2
-        errors = errors | STATUS_TOO_MANY_KINGS
+        errors = errors | Board::STATUS_TOO_MANY_KINGS
       end
 
-      if pop_count(occupied_co[WHITE] & pawns) > 8
-        errors = errors | STATUS_TOO_MANY_WHITE_PAWNS
+      if pop_count(occupied_co[Board::WHITE] & pawns) > 8
+        errors = errors | Board::STATUS_TOO_MANY_WHITE_PAWNS
       end
 
-      if pop_count(occupied_co[BLACK] & pawns) > 8
-        errors = errors | STATUS_TOO_MANY_BLACK_PAWNS
+      if pop_count(occupied_co[Board::BLACK] & pawns) > 8
+        errors = errors | Board::STATUS_TOO_MANY_BLACK_PAWNS
       end
 
-      if pawns & (BB_RANK_1 | BB_RANK_8)
-        errors = errors | STATUS_PAWNS_ON_BACKRANK
+      if pawns & (Board::BB_RANK_1 | Board::BB_RANK_8) != 0
+        errors = errors | Board::STATUS_PAWNS_ON_BACKRANK
       end
 
-      if pop_count(occupied_co[WHITE]) > 16
-        errors = errors | STATUS_TOO_MANY_WHITE_PIECES
+      if pop_count(occupied_co[Board::WHITE]) > 16
+        errors = errors | Board::STATUS_TOO_MANY_WHITE_PIECES
       end
 
-      if pop_count(occupied_co[BLACK]) > 16
-        errors = errors | STATUS_TOO_MANY_BLACK_PIECES
+      if pop_count(occupied_co[Board::BLACK]) > 16
+        errors = errors | Board::STATUS_TOO_MANY_BLACK_PIECES
       end
 
-      if castling_rights & CASTLING_WHITE
-        if !king_squares[WHITE] == E1
-          errors = errors | STATUS_BAD_CASTLING_RIGHTS
+      if castling_rights & Board::CASTLING_WHITE != 0
+        if !king_squares[Board::WHITE] == E1
+          errors = errors | Board::STATUS_BAD_CASTLING_RIGHTS
         end
 
-        if castling_rights & CASTLING_WHITE_QUEENSIDE
-          if !BB_A1 & occupied_co[WHITE] & rooks
-            errors = errors | STATUS_BAD_CASTLING_RIGHTS
+        if castling_rights & Board::CASTLING_WHITE_QUEENSIDE != 0
+          if !Board::BB_A1 & occupied_co[Board::WHITE] & rooks != 0
+            errors = errors | Board::STATUS_BAD_CASTLING_RIGHTS
           end
         end
 
-        if castling_rights & CASTLING_WHITE_KINGSIDE
-          if !BB_H1 & occupied_co[WHITE] & rooks
-            errors = errors | STATUS_BAD_CASTLING_RIGHTS
+        if castling_rights & Board::CASTLING_WHITE_KINGSIDE != 0
+          if !Board::BB_H1 & occupied_co[Board::WHITE] & rooks != 0
+            errors = errors | Board::STATUS_BAD_CASTLING_RIGHTS
           end
         end
       end
 
-      if castling_rights & CASTLING_BLACK
-        if !king_squares[BLACK] == E8
-          errors = errors | STATUS_BAD_CASTLING_RIGHTS
+      if castling_rights & Board::CASTLING_BLACK != 0
+        if !king_squares[Board::BLACK] == Board::E8
+          errors = errors | Board::STATUS_BAD_CASTLING_RIGHTS
         end
 
-        if castling_rights & CASTLING_BLACK_QUEENSIDE
-          if !BB_A8 & occupied_co[BLACK] & rooks
-            errors = errors | STATUS_BAD_CASTLING_RIGHTS
+        if castling_rights & Board::CASTLING_BLACK_QUEENSIDE != 0
+          if !Board::BB_A8 & occupied_co[Board::BLACK] & rooks != 0
+            errors = errors | Board::STATUS_BAD_CASTLING_RIGHTS
           end
         end
 
-        if castling_rights & CASTLING_BLACK_KINGSIDE
-          if !BB_H8 & occupied_co[BLACK] & rooks
-            errors = errors | STATUS_BAD_CASTLING_RIGHTS
+        if castling_rights & Board::CASTLING_BLACK_KINGSIDE != 0
+          if !Board::BB_H8 & occupied_co[Board::BLACK] & rooks != 0
+            errors = errors | Board::STATUS_BAD_CASTLING_RIGHTS
           end
         end
       end
 
       if ep_square
-        if turn == WHITE
+        if turn == Board::WHITE
           ep_rank = 5
-          pawn_mask = shift_down(BB_SQUARES[ep_square])
+          pawn_mask = shift_down(Board::BB_SQUARES[ep_square])
         else
           ep_rank = 2
-          pawn_mask = shift_up(BB_SQUARES[ep_square])
+          pawn_mask = shift_up(Board::BB_SQUARES[ep_square])
         end
 
         # The en-passant square must be on the third or sixth rank.
         if rank_index(ep_square) != ep_rank
-          errors = errors | STATUS_INVALID_EP_SQUARE
+          errors = errors | Board::STATUS_INVALID_EP_SQUARE
         end
 
         # The last move must have been a double pawn push, so there must
         # be a pawn of the correct color on the fourth or fifth rank.
-        if !pawns & occupied_co[turn ^ 1] & pawn_mask
-          errors = errors | STATUS_INVALID_EP_SQUARE
+        if !pawns & occupied_co[turn ^ 1] & pawn_mask != 0
+          errors = errors | Board::STATUS_INVALID_EP_SQUARE
         end
       end
 
-      if !errors & (STATUS_NO_WHITE_KING | STATUS_NO_BLACK_KING | STATUS_TOO_MANY_KINGS)
-        if was_into_check()
-          errors = errors | STATUS_OPPOSITE_CHECK
+      if !errors & (Board::STATUS_NO_WHITE_KING | Board::STATUS_NO_BLACK_KING | Board::STATUS_TOO_MANY_KINGS) != 0
+        if was_into_check?
+          errors = errors | Board::STATUS_OPPOSITE_CHECK
         end
       end
 

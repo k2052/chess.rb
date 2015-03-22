@@ -73,9 +73,9 @@ module Chess
 
     def and_eq(other)
       if other.respond_to? :mask
-        self.mask &= other.mask
+        self.mask = self.mask & other.mask
       else
-        self.mask &= other
+        self.mask = self.mask & other
       end
       return self
     end

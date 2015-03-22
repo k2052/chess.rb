@@ -48,13 +48,14 @@ module Chess
     STATUS_PAWNS_ON_BACKRANK     = 32
     STATUS_TOO_MANY_WHITE_PIECES = 64
     STATUS_TOO_MANY_BLACK_PIECES = 128
-    STATUS_BAD_CASTLING_RIGHTS   = 256
+    STATUS_BAD_RIGHTS   = 256
     STATUS_INVALID_EP_SQUARE     = 512
     STATUS_OPPOSITE_CHECK        = 1024
 
+    FEN_CASTLING_REGEX = /^(KQ?k?q?|Qk?q?|kq?|q|-)$/
     SAN_REGEX = /^([NBKRQ])?([a-h])?([1-8])?x?([a-h][1-8])(=[nbrqNBRQ])?(\\+|#)?$/
 
-    FEN_CASTLING_REGEX = /^(KQ?k?q?|Qk?q?|kq?|q|-)$/
+    FEN_REGEX = /^(KQ?k?q?|Qk?q?|kq?|q|-)$/
 
     A1, B1, C1, D1, E1, F1, G1, H1,
     A2, B2, C2, D2, E2, F2, G2, H2,
@@ -126,7 +127,7 @@ module Chess
       :a7, :b7, :c7, :d7, :e7, :f7, :g7, :h7,
       :a8, :b8, :c8, :d8, :e8, :f8, :g8, :h8]
 
-    CASTLING_NONE            = 0
+    CASTLING_NIL             = 0
     CASTLING_WHITE_KINGSIDE  = 1
     CASTLING_BLACK_KINGSIDE  = 2
     CASTLING_WHITE_QUEENSIDE = 4
@@ -253,7 +254,7 @@ module Chess
         q = square + 1
         while f < 8 do
           BB_RANK_ATTACKS[square][bitrow] |= BB_SQUARES[q]
-          if (1 << f) & (bitrow << 1)
+          if (1 << f) & (bitrow << 1) != 0
             break
           end
           q += 1
@@ -264,7 +265,7 @@ module Chess
         q = square - 1
         while f >= 0 do
           BB_RANK_ATTACKS[square][bitrow] |= BB_SQUARES[q]
-          if (1 << f) & (bitrow << 1)
+          if (1 << f) & (bitrow << 1) != 0
             break
           end
           q -= 1
@@ -275,7 +276,7 @@ module Chess
         q = square + 8
         while r < 8 do
           BB_FILE_ATTACKS[square][bitrow] |= BB_SQUARES[q]
-          if (1 << (7 - r)) & (bitrow << 1)
+          if (1 << (7 - r)) & (bitrow << 1) != 0
             break
           end
           q += 8
@@ -286,7 +287,7 @@ module Chess
         q = square - 8
         while r >= 0 do
           BB_FILE_ATTACKS[square][bitrow] |= BB_SQUARES[q]
-          if (1 << (7 - r)) & (bitrow << 1)
+          if (1 << (7 - r)) & (bitrow << 1) != 0
             break
           end
           q -= 8
@@ -321,7 +322,7 @@ module Chess
       a = []
       64.times { a << BB_VOID }
       BB_L45_ATTACKS << a
-      BB_R45_ATTACKS << a
+      BB_R45_ATTACKS << a.dup
     end
 
     SQUARES.each do |s|
@@ -331,8 +332,8 @@ module Chess
         q = s
         while file_index(q) > 0 and rank_index(q) < 7 do
           q += 7
-          mask |= BB_SQUARES[q]
-          if b & (BB_SQUARES_L45[q] >> BB_SHIFT_L45[s])
+          mask = mask | BB_SQUARES[q]
+          if (b & (BB_SQUARES_L45[q] >> BB_SHIFT_L45[s])) != 0
             break
           end
         end
@@ -340,8 +341,8 @@ module Chess
         q = s
         while file_index(q) < 7 and rank_index(q) > 0 do
           q -= 7
-          mask |= BB_SQUARES[q]
-          if b & (BB_SQUARES_L45[q] >> BB_SHIFT_L45[s])
+          mask = mask | BB_SQUARES[q]
+          if (b & (BB_SQUARES_L45[q] >> BB_SHIFT_L45[s])) != 0
             break
           end
         end
@@ -351,24 +352,24 @@ module Chess
         mask = BB_VOID
 
         q = s
-        while file_index(q) < 7 and rank_index(q) < 7 do
+        while file_index(q) < 7 && rank_index(q) < 7 do
           q += 9
-          mask |= BB_SQUARES[q]
-          if b & (BB_SQUARES_R45[q] >> BB_SHIFT_R45[s])
+          mask = mask | BB_SQUARES[q]
+          if (b & (BB_SQUARES_R45[q] >> BB_SHIFT_R45[s])) != 0
             break
           end
         end
 
         q = s
-        while file_index(q) > 0 and rank_index(q) > 0 do
+        while file_index(q) > 0 && rank_index(q) > 0 do
           q -= 9
-          mask |= BB_SQUARES[q]
-          if b & (BB_SQUARES_R45[q] >> BB_SHIFT_R45[s])
+          mask = mask | BB_SQUARES[q]
+          if (b & (BB_SQUARES_R45[q] >> BB_SHIFT_R45[s])) != 0
             break
           end
         end
 
-        BB_R45_ATTACKS[s][b] = mask
+       BB_R45_ATTACKS[s][b] = mask
       end
     end
 
@@ -396,6 +397,14 @@ module Chess
       BB_PAWN_ALL[1].push(*[BB_PAWN_ATTACKS[1][i] | BB_PAWN_F1[1][i] | BB_PAWN_F2[1][i]])
     end
 
+    attr_accessor :turn
+    attr_accessor :pawns, :knights, :bishops, :rooks, :queens, :kings
+    attr_accessor :occupied_co, :occupied, :occupied_l90, :occupied_l45, :occupied_r45
+    attr_accessor :king_squares, :pieces
+    attr_accessor :ep_square, :castling_rights, :fullmove_number, :halfmove_clock
+    attr_accessor :halfmove_clock_stack, :captured_piece_stack, :castling_right_stack, :ep_square_stack, :move_stack
+    attr_accessor :transpositions, :incremental_zobrist_hash
+
     ###
     # A bitboard and additional information representing a position.
     #
@@ -416,62 +425,62 @@ module Chess
 
     def reset
       ## Restores the starting position
-      pawns   = BB_RANK_2 | BB_RANK_7
-      knights = BB_B1 | BB_G1 | BB_B8 | BB_G8
-      bishops = BB_C1 | BB_F1 | BB_C8 | BB_F8
-      rooks   = BB_A1 | BB_H1 | BB_A8 | BB_H8
-      queens  = BB_D1 | BB_D8
-      kings   = BB_E1 | BB_E8
+      @pawns   = BB_RANK_2 | BB_RANK_7
+      @knights = BB_B1 | BB_G1 | BB_B8 | BB_G8
+      @bishops = BB_C1 | BB_F1 | BB_C8 | BB_F8
+      @rooks   = BB_A1 | BB_H1 | BB_A8 | BB_H8
+      @queens  = BB_D1 | BB_D8
+      @kings   = BB_E1 | BB_E8
 
-      occupied_co = [BB_RANK_1 | BB_RANK_2,  BB_RANK_7 | BB_RANK_8]
-      occupied    =  BB_RANK_1 | BB_RANK_2 | BB_RANK_7 | BB_RANK_8
+      @occupied_co = [BB_RANK_1 | BB_RANK_2,  BB_RANK_7 | BB_RANK_8]
+      @occupied    =  BB_RANK_1 | BB_RANK_2 | BB_RANK_7 | BB_RANK_8
 
-      occupied_l90 = BB_VOID
-      occupied_l45 = BB_VOID
-      occupied_r45 = BB_VOID
+      @occupied_l90 = BB_VOID
+      @occupied_l45 = BB_VOID
+      @occupied_r45 = BB_VOID
 
-      king_squares = [E1, E8]
-      pieces = Array.new(64)
+      @king_squares = [E1, E8]
+      @pieces = Array.new(64)
 
       64.times do |i|
         mask = BB_SQUARES[i]
-        if mask & pawns
-          pieces[i] = PAWN
-        elsif mask & knights
-          pieces[i] = KNIGHT
-        elsif mask & bishops
-          pieces[i] = BISHOP
-        elsif mask & rooks
-          pieces[i] = ROOK
-        elsif mask & queens
-          pieces[i] = QUEEN
-        elsif mask & kings
-          pieces[i] = KING
+        if mask & @pawns != 0
+          @pieces[i] = PAWN
+        elsif mask & @knights != 0
+          @pieces[i] = KNIGHT
+        elsif mask & @bishops != 0
+          @pieces[i] = BISHOP
+        elsif mask & @rooks != 0
+          @pieces[i] = ROOK
+        elsif mask & @queens != 0
+          @pieces[i] = QUEEN
+        elsif mask & @kings != 0
+          @pieces[i] = KING
         end
       end
 
-      ep_square       = 0
-      castling_rights = CASTLING
-      turn            = WHITE
-      fullmove_number = 1
-      halfmove_clock  = 0
+      @ep_square       = 0
+      @castling_rights = CASTLING
+      @turn            = WHITE
+      @fullmove_number = 1
+      @halfmove_clock  = 0
 
       64.times do |i|
-        if BB_SQUARES[i] & occupied
-          occupied_l90 |= BB_SQUARES_L90[i]
-          occupied_r45 |= BB_SQUARES_R45[i]
-          occupied_l45 |= BB_SQUARES_L45[i]
+        if BB_SQUARES[i] & @occupied != 0
+          @occupied_l90 |= BB_SQUARES_L90[i]
+          @occupied_r45 |= BB_SQUARES_R45[i]
+          @occupied_l45 |= BB_SQUARES_L45[i]
         end
       end
 
-      halfmove_clock_stack = Hamster.deque
-      captured_piece_stack = Hamster.deque
-      castling_right_stack = Hamster.deque
-      ep_square_stack      = Hamster.deque
-      move_stack           = Hamster.deque
+      @halfmove_clock_stack = []
+      @captured_piece_stack = []
+      @castling_right_stack = []
+      @ep_square_stack      = []
+      @move_stack           = []
 
-      incremental_zobrist_hash = board_zobrist_hash(POLYGLOT_RANDOM_ARRAY)
-      transpositions           = {}
+      @incremental_zobrist_hash = board_zobrist_hash()
+      @transpositions           = {zobrist_hash() => 1}
     end
 
     def clear
@@ -486,37 +495,37 @@ module Chess
       # properly.
       ###
 
-      pawns   = BB_VOID
-      knights = BB_VOID
-      bishops = BB_VOID
-      rooks   = BB_VOID
-      queens  = BB_VOID
-      kings   = BB_VOID
+      @pawns   = BB_VOID
+      @knights = BB_VOID
+      @bishops = BB_VOID
+      @rooks   = BB_VOID
+      @queens  = BB_VOID
+      @kings   = BB_VOID
 
-      occupied_co = [BB_VOID, BB_VOID]
-      occupied    = BB_VOID
+      @occupied_co = [BB_VOID, BB_VOID]
+      @occupied    = BB_VOID
 
-      occupied_l90 = BB_VOID
-      occupied_r45 = BB_VOID
-      occupied_l45 = BB_VOID
+      @occupied_l90 = BB_VOID
+      @occupied_r45 = BB_VOID
+      @occupied_l45 = BB_VOID
 
-      king_squares = [E1, E8]
-      pieces       = Array.new(64)
+      @king_squares = [E1, E8]
+      @pieces       = Array.new(64)
 
-      halfmove_clock_stack = Hamster.deque
-      captured_piece_stack = Hamster.deque
-      castling_right_stack = Hamster.deque
-      ep_square_stack      = Hamster.deque
-      move_stack           = Hamster.deque
+      @halfmove_clock_stack = []
+      @captured_piece_stack = []
+      @castling_right_stack = []
+      @ep_square_stack      = []
+      @move_stack           = []
 
-      ep_square       = 0
-      castling_rights = CASTLING_nil
-      turn            = WHITE
-      fullmove_number = 1
-      halfmove_clock  = 0
+      @ep_square       = 0
+      @castling_rights = CASTLING_NIL
+      @turn            = WHITE
+      @fullmove_number = 1
+      @halfmove_clock  = 0
 
-      incremental_zobrist_hash = board_zobrist_hash(POLYGLOT_RANDOM_ARRAY)
-      transpositions           = {zobrist_hash => '0'}
+      @incremental_zobrist_hash = board_zobrist_hash()
+      @transpositions           = {zobrist_hash() => 1}
     end
 
     def file_index(square)
@@ -529,10 +538,10 @@ module Chess
       return square >> 3
     end
 
-    def piece_at(square)
+    def get(square)
       # Gets the piece at the given square
       mask  = BB_SQUARES[square]
-      color = (occupied_co[BLACK] & mask).to_i
+      color = ((occupied_co[BLACK] & mask).to_boolean).to_i
 
       piece_type = piece_type_at(square)
       if piece_type
@@ -540,13 +549,13 @@ module Chess
       end
     end
 
+    # Gets the piece type at the given square
     def piece_type_at(square)
-      # Gets the piece type at the given square
       pieces[square]
     end
 
-    def remove_piece_at(square)
-      # Removes a piece from the given square if present
+    # Removes a piece from the given square if present
+    def remove(square)
       piece_type = pieces[square]
 
       return nil unless piece_type
@@ -554,27 +563,26 @@ module Chess
       mask = BB_SQUARES[square]
 
       if piece_type == PAWN
-        pawns = pawns ^ mask
+        @pawns = @pawns ^ mask
       elsif piece_type == KNIGHT
-        knights = knights ^ mask
+        @knights = @knights ^ mask
       elsif piece_type == BISHOP
-        bishops = bishops ^ mask
+        @bishops = @bishops ^ mask
       elsif piece_type == ROOK
-        rooks = rooks ^ mask
+        @rooks = @rooks ^ mask
       elsif piece_type == QUEEN
-        queens = queens ^ mask
+        @queens = @queens ^ mask
       else
-        kings = kings ^ mask
+        @kings = @kings ^ mask
       end
 
-      color = (occupied_co[BLACK] & mask).to_i
-
-      pieces[square]     = nil
-      occupied           = occupied ^ mask
-      occupied_co[color] = occupied_co[color] ^ mask
-      occupied_l90       = occupied_l90 ^ BB_SQUARES[SQUARES_L90[square]]
-      occupied_r45       = occupied_r45 ^ BB_SQUARES[SQUARES_R45[square]]
-      occupied_l45       = occupied_l45 ^ BB_SQUARES[SQUARES_L45[square]]
+      color = ((@occupied_co[BLACK] & mask).to_boolean).to_i
+      @pieces[square]     = nil
+      @occupied           = @occupied ^ mask
+      @occupied_co[color] = @occupied_co[color] ^ mask
+      @occupied_l90       = @occupied_l90 ^ BB_SQUARES[SQUARES_L90[square]]
+      @occupied_r45       = @occupied_r45 ^ BB_SQUARES[SQUARES_R45[square]]
+      @occupied_l45       = @occupied_l45 ^ BB_SQUARES[SQUARES_L45[square]]
 
       # Update incremental zobrist hash.
       if color == BLACK
@@ -583,37 +591,37 @@ module Chess
         piece_index = (piece_type - 1) * 2 + 1
       end
 
-      incremental_zobrist_hash = incremental_zobrist_hash ^ POLYGLOT_RANDOM_ARRAY[64 * piece_index + 8 * rank_index(square) + file_index(square)]
+      @incremental_zobrist_hash = @incremental_zobrist_hash ^ Zobrist::POLYGLOT_RANDOM_ARRAY[64 * piece_index + 8 * rank_index(square) + file_index(square)]
     end
 
     # Sets a piece at the given square. An existing piece is replaced
-    def set_piece_at(square, piece)
-      remove_piece_at(square)
+    def put(square, piece)
+      remove(square)
 
-      pieces[square] = piece.piece_type
+      @pieces[square] = piece.piece_type
 
       mask = BB_SQUARES[square]
 
       if piece.piece_type == PAWN
-        pawns = pawsn | mask
+        @pawns = @pawns | mask
       elsif piece.piece_type == KNIGHT
-        knights = knights | mask
+        @knights = @knights | mask
       elsif piece.piece_type == BISHOP
-        bishops = bishops | mask
+        @bishops = @bishops | mask
       elsif piece.piece_type == ROOK
-        rooks = rooks | mask
+        @rooks = @rooks | mask
       elsif piece.piece_type == QUEEN
-        queens = queens | mask
+        @queens = @queens | mask
       elsif piece.piece_type == KING
-        kings = kings | mask
-        king_squares[piece.color] = square
+        @kings = @kings | mask
+        @king_squares[piece.color] = square
       end
 
-      occupied                 = occupied ^ mask
-      occupied_co[piece.color] = occupied_co[piece.color] ^ mask
-      occupied_l90             = occupied_l90 ^ BB_SQUARES[SQUARES_L90[square]]
-      occupied_r45             = occupied_r45 ^ BB_SQUARES[SQUARES_R45[square]]
-      occupied_l45             = occupied_l45 ^ BB_SQUARES[SQUARES_L45[square]]
+      @occupied                 = @occupied ^ mask
+      @occupied_co[piece.color] = @occupied_co[piece.color] ^ mask
+      @occupied_l90             = @occupied_l90 ^ BB_SQUARES[SQUARES_L90[square]]
+      @occupied_r45             = @occupied_r45 ^ BB_SQUARES[SQUARES_R45[square]]
+      @occupied_l45             = @occupied_l45 ^ BB_SQUARES[SQUARES_L45[square]]
 
       # Update incremental zorbist hash.
       if piece.color == BLACK
@@ -622,14 +630,14 @@ module Chess
         piece_index = (piece.piece_type - 1) * 2 + 1
       end
 
-      incremental_zobrist_hash = incremental_zobrist_hash ^ POLYGLOT_RANDOM_ARRAY[64 * piece_index + 8 * rank_index(square) + file_index(square)]
+      @incremental_zobrist_hash = @incremental_zobrist_hash ^ Zobrist::POLYGLOT_RANDOM_ARRAY[64 * piece_index + 8 * rank_index(square) + file_index(square)]
     end
 
-    def is_legal(move)
-      return is_pseudo_legal(move) && !is_into_check(move)
+    def legal?(move)
+      return pseudo_legal?(move) && !into_check?(move)
     end
 
-    def push(move)
+    def move(move)
       ###
       # Updates the position with the given move and puts it onto a stack.
       #
@@ -643,33 +651,34 @@ module Chess
       # >>> move in board.pseudo_legal_moves true
 
       # Increment fullmove number.
-      if turn == BLACK
-        fullmove_number += 1
+      if @turn == BLACK
+        @fullmove_number += 1
       end
 
       # Remember game state.
-      captured_piece = nil
-      captured_piece = piece_type_at(move.to_square) if move
-      halfmove_clock_stack.append(halfmove_clock)
-      castling_right_stack.append(castling_rights)
-      captured_piece_stack.append(captured_piece)
-      ep_square_stack.append(ep_square)
-      move_stack.append(move)
+      @captured_piece = nil
+      @captured_piece = piece_type_at(move.to_square) if move
+      @halfmove_clock_stack.push(@halfmove_clock)
+      @castling_right_stack.push(@castling_rights)
+      @captured_piece_stack.push(@captured_piece)
+      @ep_square_stack.push(@ep_square)
+      @move_stack.push(move)
 
       # On a null move simply swap turns.
       unless move
-        turn           ^= 1
-        ep_square       = 0
-        halfmove_clock += 1
+        @turn            = @turn ^ 1
+        @ep_square       = 0
+        @halfmove_clock  ||= 0
+        @halfmove_clock  += 1
         return
       end
 
       # Update half move counter.
       piece_type = piece_type_at(move.from_square)
-      if piece_type == PAWN or captured_piece
-        halfmove_clock = 0
+      if piece_type == PAWN or @captured_piece
+        @halfmove_clock = 0
       else
-        halfmove_clock += 1
+        @halfmove_clock += 1
       end
 
       # Promotion.
@@ -678,35 +687,35 @@ module Chess
       end
 
       # Remove piece from target square.
-      remove_piece_at(move.from_square)
+      remove(move.from_square)
 
       # Handle special pawn moves.
-      ep_square = 0
+      @ep_square = 0
       if piece_type == PAWN
         diff = (move.to_square - move.from_square).abs
 
         # Remove pawns captured en-passant.
-        if (diff == 7 or diff == 9) && !occupied & BB_SQUARES[move.to_square]
-          if turn == WHITE
-            remove_piece_at(move.to_square - 8)
+        if (diff == 7 or diff == 9) && !@occupied & BB_SQUARES[move.to_square] != 0
+          if @turn == WHITE
+            remove(move.to_square - 8)
           else
-            remove_piece_at(move.to_square + 8)
+            remove(move.to_square + 8)
           end
         end
 
         # Set en-passant square.
         if diff == 16
-          if turn == WHITE
-            ep_square = move.to_square - 8
+          if @turn == WHITE
+            @ep_square = move.to_square - 8
           else
-            ep_square = move.to_square + 8
+            @ep_square = move.to_square + 8
           end
         end
       end
 
       # Castling rights.
       if move.from_square == E1
-        castling_rights = castling_rights & ~CASTLING_WHITE
+        @castling_rights = @castling_rights & ~CASTLING_WHITE
       elsif move.from_square == E8
         castling_rights = castling_rights & ~CASTLING_BLACK
       elsif move.from_square == A1 or move.to_square == A1
@@ -722,54 +731,62 @@ module Chess
       # Castling.
       if piece_type == KING
         if move.from_square == E1 and move.to_square == G1
-          set_piece_at(F1, Piece.new(ROOK, WHITE))
-          remove_piece_at(H1)
+          put(F1, Piece.new(ROOK, WHITE))
+          remove(H1)
         elsif move.from_square == E1 and move.to_square == C1
-          set_piece_at(D1, Piece.new(ROOK, WHITE))
+          put(D1, Piece.new(ROOK, WHITE))
           remove_piece_at(A1)
         elsif move.from_square == E8 and move.to_square == G8
-          set_piece_at(F8, Piece.new(ROOK, BLACK))
-          remove_piece_at(H8)
+          put(F8, Piece.new(ROOK, BLACK))
+          remove(H8)
         elsif move.from_square == E8 and move.to_square == C8
-          set_piece_at(D8, Piece.new(ROOK, BLACK))
-          remove_piece_at(A8)
+          put(D8, Piece.new(ROOK, BLACK))
+          remove(A8)
         end
       end
 
       # Put piece on target square.
-      set_piece_at(move.to_square, Piece.new(piece_type, turn))
+      put(move.to_square, Piece.new(piece_type, @turn))
 
       # Swap turn.
-      turn ^= 1
+      @turn = @turn ^ 1
 
       # Update transposition table.
-      transpositions[zobrist_hash] += 1
+      if @transpositions.include? zobrist_hash()
+        @transpositions[zobrist_hash()] += 1
+      else
+        @transpositions[zobrist_hash()] = 1
+      end
     end
 
-    def pop
+    def undo
       ###
       # Restores the previous position and returns the last move from the stack.
       ###
-      move = move_stack.pop()
+      move = @move_stack.pop
 
       # Update transposition table.
-      transpositions[zobrist_hash] -= 1
+      if @transpositions[zobrist_hash()]
+        @transpositions[zobrist_hash()] -= 1
+      else
+        @transpositions[zobrist_hash()] = 1
+      end
 
       # Decrement fullmove number.
-      if turn == WHITE
-        fullmove_number -= 1
+      if @turn == WHITE
+        @fullmove_number -= 1
       end
 
       # Restore state.
-      halfmove_clock       = halfmove_clock_stack.pop()
-      castling_rights      = castling_right_stack.pop()
-      ep_square            = ep_square_stack.pop()
-      captured_piece       = captured_piece_stack.pop()
-      captured_piece_color = turn
+      @halfmove_clock       = @halfmove_clock_stack.pop
+      @castling_rights      = @castling_right_stack.pop
+      @ep_square            = @ep_square_stack.pop
+      @captured_piece       = @captured_piece_stack.pop()
+      @captured_piece_color = @turn
 
       # On a null move simply swap the turn.
       unless move
-        turn ^= 1
+        @turn = @turn ^ 1
         return move
       end
 
@@ -778,23 +795,23 @@ module Chess
       if move.promotion
         piece = PAWN
       else
-        piece_type_at(move.to_square)
+        piece = piece_type_at(move.to_square)
       end
-      set_piece_at(move.from_square, Piece.new(piece, turn ^ 1))
+      put(move.from_square, Piece.new(piece, turn ^ 1))
 
       # Restore target square.
-      if captured_piece
-        set_piece_at(move.to_square, Piece.new(captured_piece, captured_piece_color))
+      if @captured_piece
+        put(move.to_square, Piece.new(@captured_piece, @captured_piece_color))
       else
-        remove_piece_at(move.to_square)
+        remove(move.to_square)
 
         # Restore captured pawn after en-passant.
-         num = move.from_square - move.to_square
+        num = move.from_square - move.to_square
         if piece == PAWN && ([7, 9].include?(num.abs))
-          if turn == WHITE
-            set_piece_at(move.to_square + 8, Piece.new(PAWN, WHITE))
+          if @turn == WHITE
+            put(move.to_square + 8, Piece.new(PAWN, WHITE))
           else
-            set_piece_at(move.to_square - 8, Piece.new(PAWN, BLACK))
+            put(move.to_square - 8, Piece.new(PAWN, BLACK))
           end
         end
       end
@@ -802,43 +819,43 @@ module Chess
       # Restore rook position after castling.
       if piece == KING
         if move.from_square == E1 and move.to_square == G1
-          remove_piece_at(F1)
-          set_piece_at(H1, Piece.new(ROOK, WHITE))
+          remove(F1)
+          put(H1, Piece.new(ROOK, WHITE))
         elsif move.from_square == E1 and move.to_square == C1
-          remove_piece_at(D1)
-          set_piece_at(A1, Piece.new(ROOK, WHITE))
+          remove(D1)
+          put(A1, Piece.new(ROOK, WHITE))
         elsif move.from_square == E8 and move.to_square == G8
-          remove_piece_at(F8)
-          set_piece_at(H8, Piece.new(ROOK, BLACK))
+          remove(F8)
+          put(H8, Piece.new(ROOK, BLACK))
         elsif move.from_square == E8 and move.to_square == C8
-          remove_piece_at(D8)
-          set_piece_at(A8, Piece.new(ROOK, BLACK))
+          remove(D8)
+          put(A8, Piece.new(ROOK, BLACK))
         end
       end
 
       # Swap turn.
-      turn ^= 1
+      @turn = @turn ^ 1
 
-      return move
+      move
     end
 
     def peek
       # Gets the last move from the move stack
-      return move_stack.last
+      return @move_stack.last
     end
 
     def to_s
       builder = []
       SQUARES_180.each do |square|
-        piece = piece_at(square)
+        piece = get(square)
 
         if piece
-          builder.push(piece.symbol())
+          builder << piece.symbol
         else
-          builder.push(".")
+          builder << '.'
         end
 
-        if BB_SQUARES[square] & BB_FILE_H
+        if BB_SQUARES[square] & BB_FILE_H != 0
           if square != H1
             builder.push("\n")
           end

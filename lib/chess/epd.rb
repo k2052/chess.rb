@@ -1,20 +1,19 @@
 module Chess
   module EPD
+    ###
+    # Parses the given EPD string and uses it to set the position.
+    #
+    # If present the `hmvc` and the `fmvn` are used to set the half move
+    # clock and the fullmove number. Otherwise `0` and `1` are used.
+    #
+    # Returns a dictionary of parsed operations. Values can be strings,
+    # integers, floats or move objects.
+    #
+    # Raises `ArgumentError` if the EPD string is invalid.
+    ###
     def set_epd(epd)
-      ###
-      # Parses the given EPD string and uses it to set the position.
-      #
-      # If present the `hmvc` and the `fmvn` are used to set the half move
-      # clock and the fullmove number. Otherwise `0` and `1` are used.
-      #
-      # Returns a dictionary of parsed operations. Values can be strings,
-      # integers, floats or move objects.
-      #
-      # Raises `ValueError` if the EPD string is invalid.
-      ###
-
       # Split into 4 or 5 parts.
-      parts = epd.strip.chomp(";").split(nil, 4)
+      parts = epd.strip.chomp(';').split(nil, 4)
       if parts.length < 4
         raise ArgumentError, "epd should consist of at least 4 parts: #{repr(epd)}"
       end
@@ -135,8 +134,8 @@ module Chess
       empty = 0
 
       # Position part.
-      SQUARES_180.eacho do |square|
-        piece = piece_at(square)
+      Board::SQUARES_180.each do |square|
+        piece = get(square)
 
         if !piece
           empty += 1
@@ -145,10 +144,10 @@ module Chess
             epd.push(empty.to_s)
             empty = 0
           end
-          epd << piece.symbol()
+          epd << piece.symbol
         end
 
-        if BB_SQUARES[square] & BB_FILE_H
+        if Board::BB_SQUARES[square] & BB_FILE_H != 0
           if empty
             epd << empty.to_s
             empty = 0
@@ -160,10 +159,10 @@ module Chess
         end
       end
 
-      epd << " "
+      epd << ' '
 
       # Side to move.
-      if turn == WHITE
+      if @turn == Board::WHITE
         epd.push('w')
       else
         epd.push('b')
@@ -172,19 +171,19 @@ module Chess
       epd.push(' ')
 
       # Castling rights.
-      if !castling_rights
+      if !(castling_rights != 0)
         epd.push('-')
       else
-        if castling_rights & CASTLING_WHITE_KINGSIDE
+        if castling_rights & Board::CASTLING_WHITE_KINGSIDE != 0
           epd.push('K')
         end
-        if castling_rights & CASTLING_WHITE_QUEENSIDE
+        if castling_rights & Board::CASTLING_WHITE_QUEENSIDE != 0
           epd.push('Q')
         end
-        if castling_rights & CASTLING_BLACK_KINGSIDE
+        if castling_rights & Board::CASTLING_BLACK_KINGSIDE != 0
           epd.push('k')
         end
-        if castling_rights & CASTLING_BLACK_QUEENSIDE
+        if castling_rights & Board::CASTLING_BLACK_QUEENSIDE != 0
           epd.push('q')
         end
       end
@@ -193,7 +192,7 @@ module Chess
 
       # En-passant square.
       if ep_square
-        epd.push(SQUARE_NAMES[ep_square])
+        epd.push(Board::SQUARE_NAMES[ep_square.to_sym])
       else
         epd.push('-')
       end
@@ -211,7 +210,7 @@ module Chess
           # Append integer or float.
           epd.push(' ')
           epd.push(operand.to_s)
-        elsif operand != nil
+        elsif operand
           # Append as escaped string.
           epd.push('"')
           epd.push(operand.to_s.gsub("\r", "").gsub("\n", " ").gsub("\\", "\\\\").gsub(";", "\\s"))
